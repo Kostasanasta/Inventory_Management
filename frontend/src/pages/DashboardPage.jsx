@@ -7,7 +7,13 @@ import {
   Box, 
   CircularProgress,
   Link,
-  Button
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import { Notifications as NotificationsIcon } from '@mui/icons-material';
@@ -15,7 +21,19 @@ import itemService from '../services/itemService';
 import supplierService from '../services/supplierService';
 
 // Use this only if you have recharts installed
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { 
+  BarChart, 
+  Bar, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
 
 // Colors for charts
 const COLORS = ['#4CAF50', '#FFC107', '#2196F3', '#F44336', '#9C27B0', '#00BCD4'];
@@ -29,6 +47,7 @@ const DashboardPage = () => {
     categoryCounts: [],
     supplierCounts: [],
     stockStatus: [],
+    topValueItems: [],
     loading: true,
     error: null,
   });
@@ -81,6 +100,15 @@ const DashboardPage = () => {
           return total + (parseFloat(item.price || 0) * parseInt(item.quantity || 0));
         }, 0);
 
+        // Top value items (sorted by total value)
+        const topValueItems = items
+          .map(item => ({
+            ...item,
+            totalValue: item.price * item.quantity
+          }))
+          .sort((a, b) => b.totalValue - a.totalValue)
+          .slice(0, 5);
+
         const lowStockItems = items.filter(item => item.quantity <= item.reorderLevel);
 
         // Calculate category counts for charts
@@ -121,6 +149,7 @@ const DashboardPage = () => {
           categoryCounts,
           supplierCounts,
           stockStatus,
+          topValueItems,
           loading: false,
           error: null,
         });
@@ -133,7 +162,7 @@ const DashboardPage = () => {
             { id: 3, name: 'Office Chair', quantity: 3, reorderLevel: 5, supplier: { name: 'Office Solutions Ltd.' }, category: 'Furniture' }
           ],
           totalSuppliers: 2,
-          totalInventoryValue: 12500.55, // Mock fallback value
+          totalInventoryValue: 16315, // Removed last two digits
           categoryCounts: [
             { name: 'Electronics', count: 3 },
             { name: 'Furniture', count: 2 },
@@ -146,6 +175,10 @@ const DashboardPage = () => {
           stockStatus: [
             { name: 'Low Stock', value: 1 },
             { name: 'Normal Stock', value: 5 }
+          ],
+          topValueItems: [
+            { id: 1, name: 'Laptop', quantity: 25, price: 899.99, totalValue: 22499.75 },
+            { id: 2, name: 'Monitor', quantity: 15, price: 249.99, totalValue: 3749.85 },
           ],
           loading: false,
           error: null,
@@ -212,10 +245,7 @@ const DashboardPage = () => {
               Total Inventory Value
             </Typography>
             <Typography variant="h2" color="#2E7D32">
-              ${stats.totalInventoryValue.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
+              ${stats.totalInventoryValue.toLocaleString()}
             </Typography>
           </Paper>
         </Grid>
@@ -274,9 +304,10 @@ const DashboardPage = () => {
         </Grid>
       </Grid>
       
-      {/* Third Row - Items by Category (full width) */}
+      {/* Third Row - Combination of Charts */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12}>
+        {/* Items by Category */}
+        <Grid item xs={12} md={8}>
           <Paper elevation={2} sx={{ p: 2, bgcolor: 'white' }}>
             <Typography variant="h6" gutterBottom>
               Items by Category
@@ -293,6 +324,40 @@ const DashboardPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </Box>
+          </Paper>
+        </Grid>
+
+        {/* Top Value Items */}
+        <Grid item xs={12} md={4}>
+          <Paper elevation={2} sx={{ p: 2, height: '100%', bgcolor: 'white' }}>
+            <Typography variant="h6" gutterBottom>
+              Top Value Items
+            </Typography>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Item</TableCell>
+                    <TableCell align="right">Total Value</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {stats.topValueItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell component="th" scope="row">
+                        {item.name}
+                      </TableCell>
+                      <TableCell align="right">
+                        ${item.totalValue.toLocaleString(undefined, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
         </Grid>
       </Grid>
@@ -338,7 +403,7 @@ const DashboardPage = () => {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Quantity: {item.quantity} | Reorder Level: {item.reorderLevel} | Supplier: {item.supplier?.name || 'N/A'} 
-                        {item.price ? ` | Price: $${parseFloat(item.price).toFixed(2)}` : ''}
+                        {item.price ? ` | Price: ${parseFloat(item.price).toFixed(2)}` : ''}
                       </Typography>
                     </Box>
                     <Button 
