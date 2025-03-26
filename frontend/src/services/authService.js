@@ -1,4 +1,3 @@
-// src/services/authService.js
 import apiClient from './apiClient';
 
 const login = (email, password) => {
