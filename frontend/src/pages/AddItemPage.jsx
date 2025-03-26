@@ -11,10 +11,25 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
+  Autocomplete,
+  Chip,
+  InputAdornment
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import itemService from '../services/itemService';
 import supplierService from '../services/supplierService';
+
+// Predefined categories
+const predefinedCategories = [
+  'Electronics',
+  'Furniture',
+  'Stationery',
+  'Office Supplies',
+  'Kitchen',
+  'Cleaning Supplies',
+  'IT Equipment',
+  'Peripherals'
+];
 
 const AddItemPage = () => {
   const navigate = useNavigate();
@@ -26,7 +41,9 @@ const AddItemPage = () => {
     description: '',
     quantity: '',
     reorderLevel: '',
+    price: '',
     supplierId: '',
+    category: '',
   });
 
   useEffect(() => {
@@ -69,6 +86,13 @@ const AddItemPage = () => {
     });
   };
 
+  const handleCategoryChange = (event, newValue) => {
+    setFormData({
+      ...formData,
+      category: newValue
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -79,6 +103,7 @@ const AddItemPage = () => {
         ...formData,
         quantity: parseInt(formData.quantity, 10) || 0,
         reorderLevel: parseInt(formData.reorderLevel, 10) || 0,
+        price: parseFloat(formData.price) || 0,
         supplierId: formData.supplierId ? parseInt(formData.supplierId, 10) : null,
       };
 
@@ -87,6 +112,19 @@ const AddItemPage = () => {
         await itemService.createItem(itemData);
       } catch (apiError) {
         console.log('Backend API not available, mock success', apiError);
+        
+        // Add to local storage if backend is not available
+        const storedItems = localStorage.getItem('mockItems');
+        const mockItems = storedItems ? JSON.parse(storedItems) : [];
+        
+        const newItem = {
+          ...itemData,
+          id: mockItems.length > 0 ? Math.max(...mockItems.map(i => i.id)) + 1 : 1,
+          supplier: suppliers.find(s => s.id === parseInt(formData.supplierId)) || { name: 'Mock Supplier' }
+        };
+        
+        const updatedItems = [...mockItems, newItem];
+        localStorage.setItem('mockItems', JSON.stringify(updatedItems));
       }
       
       // Always navigate back after "success" even if backend is not available
@@ -142,7 +180,7 @@ const AddItemPage = () => {
             />
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <TextField
               required
               fullWidth
@@ -155,7 +193,7 @@ const AddItemPage = () => {
             />
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <TextField
               required
               fullWidth
@@ -168,7 +206,23 @@ const AddItemPage = () => {
             />
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              required
+              fullWidth
+              type="number"
+              label="Price"
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                inputProps: { min: 0, step: 0.01 }
+              }}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={6}>
             <TextField
               fullWidth
               select
@@ -186,6 +240,28 @@ const AddItemPage = () => {
                 </MenuItem>
               ))}
             </TextField>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <Autocomplete
+              freeSolo
+              options={predefinedCategories}
+              value={formData.category}
+              onChange={handleCategoryChange}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip variant="outlined" label={option} {...getTagProps({ index })} />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Category"
+                  placeholder="Select or enter a category"
+                  fullWidth
+                />
+              )}
+            />
           </Grid>
 
           <Grid item xs={12}>
