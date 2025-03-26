@@ -1,24 +1,35 @@
-// src/pages/ItemsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
-  Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Box, Chip, Dialog, DialogActions,
-  DialogContent, DialogContentText, DialogTitle, CircularProgress, Alert,
-  TextField, InputAdornment,
+  Typography,
+  Button,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Box,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  CircularProgress,
+  Alert,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
-  Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, Search as SearchIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import itemService from '../services/itemService';
-
-// Initial mock data
-const initialMockItems = [
-  { id: 1, name: 'Laptop', quantity: 25, reorderLevel: 5, supplier: { name: 'Tech Supplies Inc.' } },
-  { id: 2, name: 'Monitor', quantity: 15, reorderLevel: 3, supplier: { name: 'Tech Supplies Inc.' } },
-  { id: 3, name: 'Office Chair', quantity: 10, reorderLevel: 2, supplier: { name: 'Office Solutions Ltd.' } },
-  { id: 4, name: 'Desk', quantity: 8, reorderLevel: 2, supplier: { name: 'Office Solutions Ltd.' } }
-];
 
 const ItemsPage = () => {
   const location = useLocation();
@@ -29,16 +40,21 @@ const ItemsPage = () => {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Get success message from location state if available
+  // Calculate total inventory value
+  const totalInventoryValue = items.reduce((total, item) => {
+    const price = parseFloat(item.price) || 0;
+    const quantity = parseInt(item.quantity) || 0;
+    return total + (price * quantity);
+  }, 0).toFixed(2);
+  
+  // Safely access location state
   const locationState = location.state || {};
   const [successMessage, setSuccessMessage] = useState(locationState.success || '');
 
   useEffect(() => {
-    // Clear location state after reading it
     if (location.state?.success) {
       window.history.replaceState({}, document.title);
     }
-    
     fetchItems();
   }, [location]);
 
@@ -48,7 +64,17 @@ const ItemsPage = () => {
       
       // Try to get stored mock items first
       const storedItems = localStorage.getItem('mockItems');
-      let mockItems = storedItems ? JSON.parse(storedItems) : initialMockItems;
+      const defaultItems = [
+        { id: 1, name: 'Laptop', quantity: 25, reorderLevel: 5, price: 500, supplier: { name: 'Tech Supplies Inc.' } },
+        { id: 2, name: 'Monitor', quantity: 15, reorderLevel: 3, price: 125, supplier: { name: 'Tech Supplies Inc.' } },
+        { id: 3, name: 'Office Chair', quantity: 3, reorderLevel: 5, price: 60, supplier: { name: 'Office Solutions Ltd.' } },
+        { id: 4, name: 'Desk', quantity: 8, reorderLevel: 2, price: 70, supplier: { name: 'Office Solutions Ltd.' } },
+        { id: 5, name: 'Notebook', quantity: 50, reorderLevel: 10, price: 5, supplier: { name: 'Office Solutions Ltd.' } },
+        { id: 6, name: 'Printer', quantity: 4, reorderLevel: 2, price: 200, supplier: { name: 'Tech Supplies Inc.' } },
+        { id: 7, name: 'Keyboards', quantity: 5, reorderLevel: 5, price: 30, supplier: { name: 'Tech Supplies Inc.' } }
+      ];
+      
+      let mockItems = storedItems ? JSON.parse(storedItems) : defaultItems;
       
       // Try to get real items from API
       try {
@@ -57,24 +83,11 @@ const ItemsPage = () => {
       } catch (apiError) {
         console.log('Using mock data due to API error:', apiError);
         
-        // Check if a new item was just added (from success message)
-        if (successMessage && successMessage.includes('added successfully')) {
-          const itemName = successMessage.split('"')[1]; // Extract item name from success message
-          if (itemName && !mockItems.some(item => item.name === itemName)) {
-            // Add the new item to mock data
-            const newItem = {
-              id: mockItems.length > 0 ? Math.max(...mockItems.map(i => i.id)) + 1 : 1,
-              name: itemName,
-              quantity: 1,
-              reorderLevel: 0,
-              supplier: { name: 'Mock Supplier' }
-            };
-            mockItems = [...mockItems, newItem];
-            
-            // Save updated mock items to localStorage
-            localStorage.setItem('mockItems', JSON.stringify(mockItems));
-          }
-        }
+        // Ensure all items have price
+        mockItems = mockItems.map(item => ({
+          ...item,
+          price: item.price || 0
+        }));
         
         setItems(mockItems);
       }
@@ -82,11 +95,7 @@ const ItemsPage = () => {
       setError(null);
     } catch (err) {
       console.error('Error:', err);
-      setError(null); // Don't show error
-      
-      // Load mock items from localStorage or use initial mock data
-      const storedItems = localStorage.getItem('mockItems');
-      setItems(storedItems ? JSON.parse(storedItems) : initialMockItems);
+      setError('Failed to load inventory items. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -135,7 +144,8 @@ const ItemsPage = () => {
   // Filter items safely
   const filteredItems = items.filter(item =>
     (item.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.supplier?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (item.supplier?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -153,6 +163,12 @@ const ItemsPage = () => {
         </Button>
       </Box>
 
+      <Box mb={3} p={2} border="1px solid #e0e0e0" borderRadius={1} bgcolor="#f9f9f9">
+        <Typography variant="h6" color="primary" gutterBottom>
+          Total Inventory Value: ${totalInventoryValue}
+        </Typography>
+      </Box>
+
       {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -160,7 +176,7 @@ const ItemsPage = () => {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Search by item name or supplier..."
+          placeholder="Search by item name, supplier, or category..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -184,6 +200,8 @@ const ItemsPage = () => {
               <TableRow>
                 <TableCell>Item Name</TableCell>
                 <TableCell>Quantity</TableCell>
+                <TableCell>Price</TableCell>
+                <TableCell>Value</TableCell>
                 <TableCell>Supplier</TableCell>
                 <TableCell>Reorder Level</TableCell>
                 <TableCell>Status</TableCell>
@@ -195,13 +213,15 @@ const ItemsPage = () => {
                 <TableRow key={item.id}>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
+                  <TableCell>${parseFloat(item.price).toFixed(2)}</TableCell>
+                  <TableCell>${(parseFloat(item.price) * parseInt(item.quantity)).toFixed(2)}</TableCell>
                   <TableCell>{item.supplier?.name || 'N/A'}</TableCell>
                   <TableCell>{item.reorderLevel}</TableCell>
                   <TableCell>
                     {item.quantity <= item.reorderLevel ? (
                       <Chip 
                         label="Low Stock" 
-                        color="warning" 
+                        color="error" 
                         size="small" 
                       />
                     ) : (
