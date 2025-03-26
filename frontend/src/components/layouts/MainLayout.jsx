@@ -1,4 +1,3 @@
-// src/components/layouts/MainLayout.js
 import React, { useState, useContext } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
@@ -14,7 +13,8 @@ import {
   Divider, 
   IconButton, 
   Container,
-  ListItemButton
+  ListItemButton,
+  Badge
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -23,6 +23,7 @@ import {
   LocalShipping as SupplierIcon,
   AdminPanelSettings as AdminIcon,
   Logout as LogoutIcon,
+  Notifications as NotificationsIcon
 } from '@mui/icons-material';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -33,6 +34,22 @@ const MainLayout = () => {
   const { currentUser, logout, isAdmin } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get low stock items count from localStorage
+  const getLowStockItemsCount = () => {
+    try {
+      const storedItems = localStorage.getItem('mockItems');
+      if (!storedItems) return 0;
+      
+      const items = JSON.parse(storedItems);
+      return items.filter(item => item.quantity <= item.reorderLevel).length;
+    } catch (error) {
+      console.error('Error getting low stock items count:', error);
+      return 0;
+    }
+  };
+  
+  const lowStockCount = getLowStockItemsCount();
   
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -47,10 +64,19 @@ const MainLayout = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Inventory Items', icon: <InventoryIcon />, path: '/items' },
     { text: 'Suppliers', icon: <SupplierIcon />, path: '/suppliers' },
+    { 
+      text: 'Notifications', 
+      icon: (
+        <Badge badgeContent={lowStockCount} color="error">
+          <NotificationsIcon />
+        </Badge>
+      ), 
+      path: '/notifications/settings' 
+    }
   ];
   
   // Only show admin panel for admin users
-  if (isAdmin()) {
+  if (isAdmin && isAdmin()) {
     menuItems.push({ text: 'Admin Panel', icon: <AdminIcon />, path: '/admin' });
   }
   
@@ -64,7 +90,10 @@ const MainLayout = () => {
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
+          <ListItem 
+            disablePadding
+            key={item.text}
+          >
             <ListItemButton
               component={Link}
               to={item.path}
@@ -112,7 +141,7 @@ const MainLayout = () => {
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <Typography variant="body1" sx={{ mr: 2 }}>
-            {currentUser?.name || currentUser?.email}
+            {currentUser?.name || currentUser?.email || 'Guest'}
           </Typography>
         </Toolbar>
       </AppBar>
